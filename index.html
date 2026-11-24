@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1216">
+<title>CDI AM6</title>
+<style>
+  :root{
+    --bg:#0f1216; --card:#181d24; --card2:#1f252e; --line:#2a313b; --text:#e8ecf1; --muted:#8b95a3;
+    --accent:#3fa9f5; --adv:#f5a623; --bad:#ef4b4b; --ok:#3ecf8e; --warn:#f5c623;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  body{padding:env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom))}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
+  header h1{font-size:17px;margin:0;flex:1}
+  .status{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:50%;background:#555}
+  .dot.on{background:var(--ok)} .dot.wait{background:var(--warn)} .dot.off{background:var(--bad)}
+  main{padding:12px 14px;max-width:720px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  button{font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:44px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#001425;font-weight:700}
+  button.danger{border-color:var(--bad);color:var(--bad)}
+  button:disabled{opacity:.4}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .grow{flex:1}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;border:0;border-radius:0;background:none;color:var(--muted);font-size:13px;padding:8px 2px;min-height:58px}
+  nav button.sel{color:var(--accent);font-weight:700}
+  nav .ico{display:block;font-size:20px;line-height:1.2}
+  .tab{display:none} .tab.sel{display:block}
+  .big{font-size:52px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .unit{font-size:15px;color:var(--muted);font-weight:500}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tile{background:var(--card2);border-radius:12px;padding:10px 12px}
+  .tile .lbl{font-size:12px;color:var(--muted)}
+  .tile .val{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:700}
+  .pill.bad{background:var(--bad);color:#fff} .pill.ok{background:#1d3a2e;color:var(--ok)} .pill.warn{background:#3a321a;color:var(--warn)}
+  .banner{border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+  .banner.warn{background:#3a321a;border:1px solid #6b5a22;color:#ffe08a}
+  .banner.bad{background:#3a1a1a;border:1px solid #7a2a2a;color:#ffb0b0}
+  .banner.info{background:#16283a;border:1px solid #24496b;color:#b8dcff}
+  .hidden{display:none!important}
+  label.f{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  label.f:last-child{border-bottom:0}
+  label.f .t{flex:1}
+  label.f small{display:block;color:var(--muted);font-size:12px}
+  input,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:40px;width:110px;text-align:right}
+  select{text-align:left;width:auto}
+  input.changed,select.changed{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  input.err{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+  table{width:100%;border-collapse:collapse}
+  td,th{padding:4px 3px;text-align:center}
+  th{font-size:12px;color:var(--muted);font-weight:600}
+  td input{width:100%;min-width:0}
+  td button{min-height:40px;padding:6px 10px}
+  tr.selrow td{background:#1c2c3c}
+  .log{font:12px/1.35 ui-monospace,Menlo,Consolas,monospace;background:#0a0d10;border:1px solid var(--line);border-radius:10px;padding:8px;height:320px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  .log .tx{color:var(--accent)} .log .err{color:var(--bad)} .log .ok{color:var(--ok)} .log .mon{color:#5b6573} .log .sys{color:var(--warn)}
+  .msgs{font-size:14px} .msgs div{padding:3px 0}
+  .msgs .err{color:var(--bad)} .msgs .ok{color:var(--ok)} .msgs .tx{color:var(--muted)}
+  svg text{fill:var(--muted);font-size:10px}
+  .bars .b{display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0}
+  .bars .b .n{width:86px;color:var(--muted);text-align:right}
+  .bars .b .bar{flex:1;height:16px;background:var(--card2);border-radius:4px;overflow:hidden}
+  .bars .b .bar i{display:block;height:100%;background:var(--accent)}
+  .bars .b .v{width:120px;font-variant-numeric:tabular-nums}
+  .muted{color:var(--muted);font-size:13px}
+  .switch{width:auto;min-height:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>CDI AM6</h1>
+  <div class="status"><span id="dot" class="dot"></span><span id="stText">Non collegato</span></div>
+</header>
+
+<main>
+  <!-- ===================== COLLEGAMENTO ===================== -->
+  <div id="connectCard" class="card">
+    <h2>Collegamento</h2>
+    <div id="noBt" class="banner bad hidden">
+      Questo browser non può usare il Bluetooth.<br>
+      Su <b>iPhone</b> apri questa pagina con l'app gratuita <b>Bluefy</b> (App Store).<br>
+      Intanto puoi provare l'app con il simulatore.
+    </div>
+    <div class="row">
+      <button id="btnConnect" class="primary grow">🔵 Collega la centralina</button>
+      <button id="btnDisconnect" class="hidden">Scollega</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnConnectAll" class="grow">Non la trovo: mostra tutti</button>
+      <button id="btnDemo" class="grow">🧪 Simulatore</button>
+    </div>
+    <p class="muted" id="connHelp">Accendi il quadro (la centralina deve essere alimentata), poi premi “Collega” e scegli il modulo (di solito si chiama <b>CDI_AM6</b>, <b>HMSoft</b> o <b>BT05</b>).</p>
+  </div>
+
+  <div id="demoCard" class="card hidden">
+    <h2>Simulatore (nessuna centralina vera)</h2>
+    <div class="row">
+      <button id="demoEngine" class="grow">▶️ Accendi motore finto</button>
+      <button id="demoReset" class="grow">🔄 Riavvia Arduino finto</button>
+    </div>
+    <p class="muted">Il simulatore risponde come il firmware vero: puoi provare a salvare con il motore finto acceso per vedere l'errore.</p>
+  </div>
+
+  <!-- ===================== CRUSCOTTO ===================== -->
+  <section id="tab-dash" class="tab sel">
+    <div class="card" style="text-align:center">
+      <svg id="gauge" viewBox="0 0 300 170" style="width:100%;max-width:420px"></svg>
+      <div style="margin-top:-62px"><span id="dRpm" class="big">—</span> <span class="unit">giri/min</span></div>
+      <div style="margin-top:10px;min-height:28px"><span id="dCut" class="pill ok">nessun taglio</span> <span id="dMode" class="pill warn hidden">MODALITÀ TEST</span></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="lbl">Anticipo</div><div class="val"><span id="dAdv">—</span> <span class="unit">° prima PMS</span></div></div>
+      <div class="tile"><div class="lbl">Giri massimi (da quando sei collegato)</div><div class="val" id="dMax">—</div></div>
+      <div class="tile"><div class="lbl">Interventi limitatore</div><div class="val" id="dLim">—</div></div>
+      <div class="tile"><div class="lbl">Scintille saltate (taglio)</div><div class="val" id="dSkip">—</div></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Ultimi 30 secondi</h2>
+      <svg id="trend" viewBox="0 0 340 150" style="width:100%"></svg>
+      <div class="muted"><span style="color:var(--accent)">━</span> giri &nbsp; <span style="color:var(--adv)">━</span> anticipo &nbsp; · scintille totali: <span id="dSparks">—</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== IMPOSTAZIONI ===================== -->
+  <section id="tab-set" class="tab">
+    <div id="runBanner" class="banner warn">⚠️ Le modifiche si possono salvare <b>solo a motore spento</b>. La centralina rifiuta i comandi se il motore gira.</div>
+    <div class="row" style="margin-bottom:12px">
+      <button id="btnRead" class="grow">⬇️ Rileggi dalla centralina</button>
+      <button id="btnSave" class="primary grow">💾 Salva sulla centralina</button>
+    </div>
+    <div id="saveMsgs" class="card msgs hidden"></div>
+
+    <div class="card">
+      <h2>Parametri</h2>
+      <label class="f"><span class="t">Angolo pick-up<small>gradi prima del PMS, misurato con la strobo (0–60)</small></span><input id="fP" inputmode="decimal"></label>
+      <label class="f"><span class="t">Fronte del segnale<small>se l'angolo misurato è strano, prova l'altro</small></span>
+        <select id="fE"><option value="0">discesa (E 0)</option><option value="1">salita (E 1)</option></select></label>
+      <label class="f"><span class="t">Giri avviamento<small>sotto questi giri la scintilla è sul pick-up (600–3000)</small></span><input id="fC" inputmode="numeric"></label>
+      <label class="f"><span class="t">Limitatore<small>giri a cui taglia la scintilla (2000–18000)</small></span><input id="fL" inputmode="numeric"></label>
+      <label class="f"><span class="t">Isteresi limitatore<small>di quanti giri deve scendere per riprendere (0–1500)</small></span><input id="fY" inputmode="numeric"></label>
+      <label class="f"><span class="t">Modalità test<small>scintilla fissa sul pick-up e limitatore a 4000 giri: serve per misurare l'angolo con la strobo</small></span>
+        <select id="fT"><option value="1">ATTIVA</option><option value="0">spenta</option></select></label>
+    </div>
+
+    <div class="card">
+      <h2>Curva di anticipo</h2>
+      <svg id="mapChart" viewBox="0 0 340 210" style="width:100%"></svg>
+      <p class="muted">Tratteggio arancio = anticipo massimo possibile (angolo pick-up). Zona grigia = avviamento. Riga rossa = limitatore. Puntino verde = dove sta lavorando ora il motore.</p>
+      <table>
+        <thead><tr><th>#</th><th>Giri</th><th>Gradi</th><th></th><th></th></tr></thead>
+        <tbody id="mapBody"></tbody>
+      </table>
+      <div class="row" style="margin-top:8px">
+        <button id="btnAddPt" class="grow">➕ Aggiungi punto</button>
+        <button id="btnSortPt">Ordina per giri</button>
+      </div>
+      <div id="mapErr" class="banner bad hidden" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Altro</h2>
+      <button id="btnDefaults" class="danger" style="width:100%">Ripristina valori di fabbrica</button>
+      <p class="muted">Carica la curva prudente del README e riattiva la modalità test. Non salva finché non premi “Salva”.</p>
+    </div>
+  </section>
+
+  <!-- ===================== STATISTICHE ===================== -->
+  <section id="tab-stat" class="tab">
+    <div class="row" style="margin-bottom:12px">
+      <button id="btnStats" class="primary grow">⬇️ Leggi dati di marcia</button>
+      <button id="btnZero" class="danger">Azzera</button>
+    </div>
+    <div id="statMsg" class="banner hidden"></div>
+    <div id="statBody" class="hidden">
+      <div class="tiles">
+        <div class="tile"><div class="lbl">Tempo motore acceso</div><div class="val" id="sRun">—</div></div>
+        <div class="tile"><div class="lbl">Avviamenti</div><div class="val" id="sStarts">—</div></div>
+        <div class="tile"><div class="lbl">Giri massimi di sempre</div><div class="val" id="sMax">—</div></div>
+        <div class="tile"><div class="lbl">Giri massimi ultima uscita</div><div class="val" id="sLast">—</div></div>
+        <div class="tile"><div class="lbl">Interventi limitatore</div><div class="val" id="sLim">—</div></div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <h2>Tempo per fascia di giri</h2>
+        <div id="sBands" class="bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CONSOLE ===================== -->
+  <section id="tab-con" class="tab">
+    <div class="card">
+      <h2>Console (per esperti)</h2>
+      <div class="row" style="margin-bottom:8px">
+        <input id="conIn" class="grow" style="text-align:left" placeholder="comando, es. S" autocapitalize="characters" autocomplete="off">
+        <button id="conSend" class="primary">Invia</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <button data-q="H">H aiuto</button><button data-q="S">S config</button><button data-q="I">I dati</button>
+        <label class="muted"><input type="checkbox" id="conCsv" class="switch"> mostra flusso CSV</label>
+      </div>
+      <div id="log" class="log"></div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="dash" class="sel"><span class="ico">⏱️</span>Cruscotto</button>
+  <button data-tab="set"><span class="ico">⚙️</span>Impostazioni</button>
+  <button data-tab="stat"><span class="ico">📊</span>Statistiche</button>
+  <button data-tab="con"><span class="ico">⌨️</span>Console</button>
+</nav>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const now = () => performance.now();
+const SVC = 0xffe0, CHR = 0xffe1;
+
+/* =====================================================================
+   COLLEGAMENTO BLUETOOTH (modulo HM-10: servizio FFE0, caratteristica FFE1)
+   ===================================================================== */
+class BleLink {
+  constructor() { this.dev = null; this.ch = null; this.onData = null; this.onDisconnect = null; this.wq = Promise.resolve(); this.dec = new TextDecoder(); }
+  get name() { return (this.dev && this.dev.name) || 'HM-10'; }
+  async choose(all) {
+    const opts = all
+      ? { acceptAllDevices: true, optionalServices: [SVC] }
+      : { filters: [{ services: [SVC] }, { namePrefix: 'CDI' }, { namePrefix: 'HM' }, { namePrefix: 'BT05' }, { namePrefix: 'MLT' }], optionalServices: [SVC] };
+    this.dev = await navigator.bluetooth.requestDevice(opts);
+    this.dev.addEventListener('gattserverdisconnected', () => { this.ch = null; if (this.onDisconnect) this.onDisconnect(); });
+  }
+  async open() {
+    const gatt = await this.dev.gatt.connect();
+    const svc = await gatt.getPrimaryService(SVC);
+    this.ch = await svc.getCharacteristic(CHR);
+    this.ch.addEventListener('characteristicvaluechanged', e => {
+      const v = e.target.value;
+      const t = this.dec.decode(new Uint8Array(v.buffer, v.byteOffset, v.byteLength), { stream: true });
+      if (this.onData) this.onData(t);
+    });
+    await this.ch.startNotifications();
+  }
+  send(text) {
+    const bytes = new TextEncoder().encode(text);
+    // l'HM-10 accetta al massimo 20 byte per scrittura: si spezza e si mette in coda
+    this.wq = this.wq.catch(() => {}).then(async () => {
+      for (let i = 0; i < bytes.length; i += 20) {
+        if (!this.ch) throw new Error('Non collegato');
+        const part = bytes.slice(i, i + 20);
+        if (this.ch.writeValueWithoutResponse) await this.ch.writeValueWithoutResponse(part);
+        else await this.ch.writeValue(part);
+        await sleep(20);
+      }
+    });
+    return this.wq;
+  }
+  close() { if (this.dev && this.dev.gatt.connected) this.dev.gatt.disconnect(); }
+}
+
+/* =====================================================================
+   SIMULATORE: imita il firmware cdi_am6.ino (stessi comandi, stesse risposte)
+   ===================================================================== */
+class MockLink {
+  constructor() {
+    this.onData = null; this.onDisconnect = null; this.out = ''; this.inBuf = '';
+    this.engineOn = false; this.engineT = 0;
+    this.stats = { runTenths: 45230, band: [8000, 12000, 9000, 7000, 5000, 3200, 1030, 0], starts: 37, limiterEvents: 12, maxRpm: 12610 };
+    this.boot(true);
+  }
+  get name() { return 'Simulatore CDI'; }
+  boot(first) {
+    this.loadDefaults(); this.fresh = true;
+    this.monitorMode = 0; this.sparks = 0; this.skips = 0; this.limCount = 0; this.cutting = false;
+    this.rpm = 0; this.sessionMax = 0; this.lastPrint = 0; this.millis0 = now();
+    if (!first) {
+      this.println('CDI AM6 programmabile v2 - H per aiuto');
+      this.println('Nessuna configurazione salvata: caricati i valori di fabbrica.');
+      if (this.cfg.testMode) this.println('!!! MODALITA TEST ATTIVA: scintilla sul pick-up, limitatore 4000 giri !!!');
+    }
+  }
+  millis() { return Math.floor(now() - this.millis0) + 123000; }
+  loadDefaults() {
+    this.cfg = { pickup10: 280, risingEdge: 0, crankRpm: 1200, limitRpm: 12500, limitHyst: 200, testMode: 1,
+      rpm: [1000, 3000, 6000, 8500, 10000, 11500, 13000, 0, 0, 0, 0, 0], adv10: [140, 170, 180, 170, 140, 110, 90, 0, 0, 0, 0, 0], nPoints: 7 };
+  }
+  async choose() { await sleep(300); }
+  async open() {
+    await sleep(500);
+    this.timer = setInterval(() => this.tick(), 20);
+  }
+  close() { clearInterval(this.timer); setTimeout(() => this.onDisconnect && this.onDisconnect(), 50); }
+  print(s) { this.out += s; }
+  println(s) { this.out += (s === undefined ? '' : s) + '\r\n'; }
+  print10(v) { let s = ''; if (v < 0) { s = '-'; v = -v; } return s + Math.trunc(v / 10) + '.' + (v % 10); }
+  dur(t) { const s = Math.floor(t / 10); return Math.floor(s / 3600) + 'h ' + (Math.floor(s / 60) % 60) + 'm ' + (s % 60) + 's'; }
+  send(text) {
+    // arriva all'Arduino dopo un po', come via radio
+    setTimeout(() => {
+      for (const ch of text) {
+        if (ch === '\r' || ch === '\n') { if (this.inBuf.length) { this.handleLine(this.inBuf); this.inBuf = ''; } }
+        else if (this.inBuf.length < 47) this.inBuf += ch;
+      }
+    }, 40);
+    return Promise.resolve();
+  }
+  advanceAt(r) {
+    const c = this.cfg, n = c.nPoints;
+    if (r <= c.rpm[0]) return c.adv10[0];
+    for (let i = 1; i < n; i++) if (r <= c.rpm[i]) {
+      const r0 = c.rpm[i - 1], r1 = c.rpm[i], a0 = c.adv10[i - 1], a1 = c.adv10[i];
+      if (r1 <= r0) return a1;
+      return Math.trunc(a0 + (a1 - a0) * (r - r0) / (r1 - r0));
+    }
+    return c.adv10[n - 1];
+  }
+  effAdv(r) {
+    if (r === 0) return 0;
+    if (this.cfg.testMode || r < this.cfg.crankRpm) return this.cfg.pickup10;
+    return Math.min(this.advanceAt(r), this.cfg.pickup10);
+  }
+  mapAscending() { const c = this.cfg; for (let i = 1; i < c.nPoints; i++) if (c.rpm[i] <= c.rpm[i - 1]) return false; return true; }
+  tick() {
+    const dt = 0.02, c = this.cfg;
+    // invio verso il telefono: ~19 byte ogni 20 ms = 9600 baud
+    if (this.out.length) { const part = this.out.slice(0, 19); this.out = this.out.slice(19); if (this.onData) this.onData(part); }
+    // motore finto
+    let lim = c.limitRpm; if (c.testMode && lim > 4000) lim = 4000;
+    const rel = (lim > c.limitHyst + 500) ? lim - c.limitHyst : lim;
+    if (this.engineOn) {
+      this.engineT += dt;
+      const ph = (this.engineT % 14) / 14; // giro di 14 s: minimo -> tutto aperto -> minimo
+      let target = 1600 + 12400 * Math.max(0, Math.sin(ph * Math.PI)) ** 1.5;
+      if (this.cutting) target = Math.min(target, rel - 150);
+      this.rpm += (target - this.rpm) * 0.08 + (Math.random() - .5) * 60;
+      this.rpm = Math.max(900, Math.round(this.rpm));
+      if (this.rpm > lim && !this.cutting) { this.cutting = true; this.limCount++; this.stats.limiterEvents++; }
+      else if (this.rpm < rel) this.cutting = false;
+      const pulses = this.rpm / 60 * dt;
+      if (this.cutting) this.skips += Math.round(pulses); else this.sparks += Math.round(pulses);
+      this.sessionMax = Math.max(this.sessionMax, this.rpm);
+      this.stats.maxRpm = Math.max(this.stats.maxRpm, this.rpm);
+    } else { this.rpm = 0; this.cutting = false; }
+    // monitor
+    if (!this.monitorMode) return;
+    const iv = this.monitorMode === 2 ? 100 : 250, m = this.millis();
+    if (m - this.lastPrint < iv || this.out.length > 24) return;
+    this.lastPrint = m;
+    const adv = this.effAdv(this.rpm);
+    if (this.monitorMode === 2) this.println([m, this.rpm, adv, this.cutting ? 1 : 0, this.limCount, this.sparks, this.skips].join(','));
+    else this.println('giri=' + this.rpm + ' ant=' + this.print10(adv) + ' taglio=' + (this.cutting ? 1 : 0) + ' max=' + this.sessionMax);
+  }
+  handleLine(line) {
+    const parts = line.split(/[ \t]+/).filter(Boolean);
+    if (!parts.length) return;
+    const c = parts[0][0].toUpperCase(), a1 = parts[1], a2 = parts[2], a3 = parts[3];
+    const atoi = s => parseInt(s, 10) || 0, atof = s => parseFloat(s) || 0;
+    const cfg = this.cfg;
+    switch (c) {
+      case 'H': case '?':
+        ['Lettura (sempre):', '  S  configurazione     I  dati di marcia', '  R  monitor leggibile  K  monitor CSV (per registrare)',
+         '  W  salva configurazione in EEPROM', 'Modifiche (solo a motore spento):', "  P 28.5       angolo pick-up (gradi prima del PMS)",
+         '  E 0|1        fronte: 0 discesa, 1 salita', "  C 1200       giri sotto cui la scintilla e' fissa sul pick-up",
+         '  L 12500      limitatore    Y 200  isteresi', '  T 0|1        modalita test (limitatore 4000 giri)',
+         '  N 7          numero di punti della mappa (1-12)', '  M 3 8500 17  punto 3 = 8500 giri, 17.0 gradi',
+         '  D            valori di fabbrica (non salva)', '  Z 1          azzera i dati di marcia'].forEach(l => this.println(l));
+        return;
+      case 'S':
+        this.println('--- Configurazione ---');
+        this.println('Angolo pick-up (P): ' + this.print10(cfg.pickup10) + ' gradi prima del PMS');
+        this.println('Fronte (E): ' + (cfg.risingEdge ? 'salita' : 'discesa'));
+        this.println('Giri avviamento (C): ' + cfg.crankRpm);
+        this.println('Limitatore (L): ' + cfg.limitRpm + '  isteresi (Y): ' + cfg.limitHyst);
+        this.println('Modalita test (T): ' + (cfg.testMode ? 'ATTIVA' : 'no'));
+        this.println('Mappa (M indice giri anticipo):');
+        for (let i = 0; i < cfg.nPoints; i++) this.println('  ' + i + ': ' + cfg.rpm[i] + ' giri -> ' + this.print10(cfg.adv10[i]) + ' gradi');
+        return;
+      case 'I': {
+        const s = this.stats;
+        this.println('--- Dati di marcia ---');
+        this.println('Tempo motore acceso: ' + this.dur(s.runTenths));
+        this.println('Avviamenti: ' + s.starts);
+        this.println('Giri massimi: ' + s.maxRpm + '  (ultima uscita: ' + this.sessionMax + ')');
+        this.println('Interventi limitatore: ' + s.limiterEvents);
+        this.println('Tempo per fascia di giri:');
+        for (let b = 0; b < 8; b++) {
+          const pct = s.runTenths ? Math.floor(s.band[b] * 1000 / s.runTenths) : 0;
+          this.println('  ' + (b * 2000) + (b < 7 ? '-' + (b + 1) * 2000 : '+') + ': ' + this.print10(pct) + '%  ' + this.dur(s.band[b]));
+        }
+        return;
+      }
+      case 'R': this.monitorMode = this.monitorMode === 1 ? 0 : 1; return;
+      case 'K':
+        this.monitorMode = this.monitorMode === 2 ? 0 : 2;
+        if (this.monitorMode === 2) this.println('#ms,giri,anticipo_x10,taglio,limitatore,scintille,saltate');
+        return;
+      case 'W':
+        if (!this.mapAscending()) { this.println('ERRORE: i giri della mappa devono essere crescenti'); return; }
+        this.fresh = false; this.println('Salvato.'); return;
+    }
+    if (this.rpm > 0) { this.println('Modifiche permesse solo a motore spento.'); return; }
+    if (c === 'Z') {
+      if (a1 && atoi(a1) === 1) { this.stats = { runTenths: 0, band: [0, 0, 0, 0, 0, 0, 0, 0], starts: 0, limiterEvents: 0, maxRpm: 0 }; this.sessionMax = 0; this.println('Dati di marcia azzerati.'); }
+      else this.println('Scrivi Z 1 per confermare.');
+      return;
+    }
+    let err = null, missing = false;
+    switch (c) {
+      case 'D': this.loadDefaults(); break;
+      case 'P': if (!a1) { missing = true; break; } { const v = atof(a1); if (v < 0 || v > 60) err = 'Fuori range 0-60'; else cfg.pickup10 = Math.trunc(v * 10 + 0.5); } break;
+      case 'E': if (!a1) { missing = true; break; } cfg.risingEdge = atoi(a1) ? 1 : 0; break;
+      case 'C': if (!a1) { missing = true; break; } { const v = atoi(a1); if (v < 600 || v > 3000) err = 'Fuori range 600-3000'; else cfg.crankRpm = v; } break;
+      case 'L': if (!a1) { missing = true; break; } { const v = atoi(a1); if (v < 2000 || v > 18000) err = 'Fuori range 2000-18000'; else cfg.limitRpm = v; } break;
+      case 'Y': if (!a1) { missing = true; break; } { const v = atoi(a1); if (v < 0 || v > 1500) err = 'Fuori range 0-1500'; else cfg.limitHyst = v; } break;
+      case 'T': if (!a1) { missing = true; break; } cfg.testMode = atoi(a1) ? 1 : 0; break;
+      case 'N': if (!a1) { missing = true; break; } { const v = atoi(a1); if (v < 1 || v > 12) err = 'Fuori range 1-12'; else cfg.nPoints = v; } break;
+      case 'M': if (!a1 || !a2 || !a3) { missing = true; break; } {
+        const i = atoi(a1), r = atoi(a2), a = atof(a3);
+        if (i < 0 || i >= 12 || r < 0 || r > 20000 || a < -5 || a > 45) err = 'Valori fuori range (indice 0-11, giri 0-20000, gradi -5..45)';
+        else { cfg.rpm[i] = r; cfg.adv10[i] = Math.trunc(a * 10 + (a >= 0 ? 0.5 : -0.5)); if (i >= cfg.nPoints) cfg.nPoints = i + 1; }
+      } break;
+      default: err = 'Comando sconosciuto, H per aiuto';
+    }
+    if (missing) { this.println('Manca il valore'); return; }
+    if (err) { this.println(err); return; }
+    this.println(c === 'D' ? 'Valori di fabbrica caricati (W per salvare).' : 'OK (W per salvare)');
+    if (!this.mapAscending()) this.println('ATTENZIONE: giri della mappa non crescenti');
+  }
+}
+
+/* =====================================================================
+   PROTOCOLLO: divide il testo in righe, separa il flusso CSV (K) dalle risposte
+   ===================================================================== */
+const CSV_RE = /^(\d+),(\d+),(-?\d+),([01]),(\d+),(\d+),(\d+)$/;
+const Cdi = {
+  link: null, buf: '', waiter: null, lock: Promise.resolve(), lastCsv: 0, lastK: 0, busy: 0,
+  onTelemetry: null, onInfo: null,
+  feed(text) {
+    this.buf += text;
+    let i;
+    while ((i = this.buf.search(/[\r\n]/)) >= 0) {
+      const line = this.buf.slice(0, i).replace(/\s+$/, '');
+      this.buf = this.buf.slice(i + 1);
+      if (line.trim()) this.line(line);
+    }
+    if (this.buf.length > 300) this.buf = '';
+  },
+  line(l) {
+    if (l.startsWith('#ms,')) { this.lastCsv = now(); log(l, 'mon'); return; }
+    const m = CSV_RE.exec(l);
+    if (m) {
+      this.lastCsv = now(); log(l, 'mon', true);
+      if (this.onTelemetry) this.onTelemetry({ ms: +m[1], rpm: +m[2], adv: +m[3] / 10, cut: m[4] === '1', lim: +m[5], sparks: +m[6], skips: +m[7] });
+      return;
+    }
+    if (/^giri=/.test(l)) { log(l, 'mon'); return; }
+    if (/^(CDI AM6 programmabile|Nessuna configurazione|!!! MODALITA TEST)/.test(l)) {
+      log(l, 'sys'); if (this.onInfo) this.onInfo(l); return;           // l'Arduino si è riavviato
+    }
+    if (/^ATTENZIONE/.test(l)) { log(l, 'sys'); if (this.onInfo) this.onInfo(l); return; }
+    log(l, /^(ERRORE|Fuori range|Manca|Valori fuori|Comando sconosciuto|Modifiche permesse)/.test(l) ? 'err' : '');
+    if (this.waiter) this.waiter(l);
+  },
+  // esegue un comando alla volta. collect(riga) -> 'done' | numero (ms di silenzio per finire) | undefined
+  request(cmd, collect, timeout = 2500) {
+    const job = () => new Promise((res, rej) => {
+      const lines = []; let quiet = null;
+      const end = ok => { clearTimeout(quiet); clearTimeout(to); this.waiter = null; ok ? res(lines) : rej(new Error('Nessuna risposta dalla centralina (comando ' + cmd + ')')); };
+      const to = setTimeout(() => end(lines.length > 0), timeout);
+      this.waiter = l => {
+        lines.push(l);
+        const r = collect ? collect(l, lines) : 'done';
+        if (r === 'done') end(true);
+        else if (typeof r === 'number') { clearTimeout(quiet); quiet = setTimeout(() => end(true), r); }
+      };
+      log(cmd, 'tx');
+      this.link.send(cmd + '\n').catch(e => { this.waiter = null; clearTimeout(to); rej(e); });
+    });
+    this.busy++;
+    const p = this.lock.catch(() => {}).then(job);
+    this.lock = p;
+    return p.finally(() => this.busy--);
+  },
+  async ask(cmd) { return (await this.request(cmd))[0]; },
+  raw(cmd) {
+    const p = this.lock.catch(() => {}).then(() => { log(cmd, 'tx'); return this.link.send(cmd + '\n'); });
+    this.lock = p; return p;
+  },
+  // accende il flusso CSV (K) se non sta già arrivando. K è un interruttore: va mandato solo se è spento.
+  async ensureMonitor() {
+    if (!this.link || now() - this.lastCsv < 1200 || now() - this.lastK < 3000) return;
+    this.lastK = now();
+    await this.raw('K');
+  },
+  async readConfig() {
+    let seenMap = false;
+    const lines = await this.request('S', l => {
+      if (/^Mappa/.test(l)) { seenMap = true; return 500; }
+      if (seenMap && /^\s+\d+:/.test(l)) return 400;
+      if (seenMap) return 'done';
+    }, 4000);
+    const txt = lines.join('\n'), g = re => { const m = re.exec(txt); return m ? m : null; };
+    const p = g(/Angolo pick-up \(P\): (-?[\d.]+)/), e = g(/Fronte \(E\): (salita|discesa)/), c = g(/Giri avviamento \(C\): (\d+)/),
+          l = g(/Limitatore \(L\): (\d+)\s+isteresi \(Y\): (\d+)/), t = g(/Modalita test \(T\): (ATTIVA|no)/);
+    const pts = [];
+    for (const ln of lines) { const m = /^\s+(\d+): (\d+) giri -> (-?[\d.]+) gradi/.exec(ln); if (m) pts.push({ r: +m[2], a10: Math.round(parseFloat(m[3]) * 10) }); }
+    if (!p || !e || !c || !l || !t || !pts.length) throw new Error('Risposta al comando S incompleta, riprova.');
+    return { pickup10: Math.round(parseFloat(p[1]) * 10), edge: e[1] === 'salita' ? 1 : 0, crank: +c[1], limit: +l[1], hyst: +l[2], test: t[1] === 'ATTIVA' ? 1 : 0, pts };
+  },
+  async readStats() {
+    const lines = await this.request('I', l => (/^\s+14000\+:/.test(l) ? 'done' : undefined), 4000);
+    const txt = lines.join('\n'), g = re => re.exec(txt);
+    const run = g(/Tempo motore acceso: (.+)/), st = g(/Avviamenti: (\d+)/), mx = g(/Giri massimi: (\d+)\s+\(ultima uscita: (\d+)\)/), li = g(/Interventi limitatore: (\d+)/);
+    const bands = [];
+    for (const ln of lines) { const m = /^\s+(\d+)(?:-(\d+)|\+): (-?[\d.]+)%\s+(.+)$/.exec(ln); if (m) bands.push({ from: +m[1], to: m[2] ? +m[2] : null, pct: parseFloat(m[3]), time: m[4] }); }
+    if (!run || !st || !mx || !li || bands.length < 8) throw new Error('Risposta al comando I incompleta, riprova.');
+    return { run: run[1], starts: +st[1], max: +mx[1], last: +mx[2], lim: +li[1], bands };
+  }
+};
+
+/* =====================================================================
+   INTERFACCIA
+   ===================================================================== */
+let link = null, connected = false, demo = false, cfgDev = null, form = null, selRow = -1;
+let tele = null, teleT = 0, sessionMax = 0;
+const hist = []; // {t, rpm, adv}
+
+function log(text, cls = '', isCsv = false) {
+  const box = $('#log');
+  if (isCsv && !$('#conCsv').checked) return;
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = (cls === 'tx' ? '> ' : '') + text;
+  const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 20;
+  box.appendChild(d);
+  while (box.childNodes.length > 400) box.removeChild(box.firstChild);
+  if (atEnd) box.scrollTop = box.scrollHeight;
+}
+function setStatus(kind, text) { $('#dot').className = 'dot ' + kind; $('#stText').textContent = text; }
+const engineRunning = () => tele && now() - teleT < 1500 && tele.rpm > 0;
+
+// ---------- collegamento
+async function connect(kind) {
+  if (link) { try { link.close(); } catch (e) {} }
+  demo = kind === 'demo';
+  link = demo ? new MockLink() : new BleLink();
+  Cdi.link = link; Cdi.buf = ''; Cdi.lastCsv = 0; Cdi.lastK = 0;
+  link.onData = t => Cdi.feed(t);
+  link.onDisconnect = () => {
+    connected = false; setStatus('off', 'Connessione persa'); updateConnUI();
+    log('--- connessione chiusa ---', 'sys');
+  };
+  try {
+    setStatus('wait', 'Scelta del dispositivo…');
+    await link.choose(kind === 'all');
+    setStatus('wait', 'Collegamento a ' + link.name + '…');
+    await link.open();
+    connected = true; sessionMax = 0; hist.length = 0;
+    setStatus('on', 'Collegato a ' + link.name);
+    log('--- collegato a ' + link.name + ' ---', 'sys');
+    updateConnUI();
+    await sleep(800);                 // ascolta: magari il flusso K è già acceso
+    await Cdi.ensureMonitor();
+    loadConfig(true);
+  } catch (e) {
+    connected = false;
+    if (e && e.name === 'NotFoundError') setStatus('', 'Non collegato');
+    else { setStatus('off', 'Errore'); alert('Collegamento non riuscito:\n' + (e.message || e)); }
+    updateConnUI();
+  }
+}
+function updateConnUI() {
+  $('#btnConnect').classList.toggle('hidden', connected);
+  $('#btnDisconnect').classList.toggle('hidden', !connected);
+  $('#btnConnectAll').parentElement.classList.toggle('hidden', connected);
+  $('#connHelp').classList.toggle('hidden', connected);
+  $('#demoCard').classList.toggle('hidden', !(connected && demo));
+  document.querySelectorAll('#btnRead,#btnSave,#btnStats,#btnZero,#btnDefaults,#conSend').forEach(b => b.disabled = !connected);
+}
+$('#btnConnect').onclick = () => connect('ble');
+$('#btnConnectAll').onclick = () => connect('all');
+$('#btnDemo').onclick = () => connect('demo');
+$('#btnDisconnect').onclick = () => { if (link) link.close(); };
+$('#demoEngine').onclick = () => {
+  link.engineOn = !link.engineOn;
+  if (link.engineOn) { link.engineT = 0; link.rpm = 1200; }
+  $('#demoEngine').textContent = link.engineOn ? '⏹️ Spegni motore finto' : '▶️ Accendi motore finto';
+};
+$('#demoReset').onclick = () => { link.engineOn = false; $('#demoEngine').textContent = '▶️ Accendi motore finto'; link.boot(false); };
+
+// se il flusso dati si ferma (es. l'Arduino si è riavviato) lo riaccende
+setInterval(() => { if (connected && !Cdi.busy && now() - Cdi.lastCsv > 2500) Cdi.ensureMonitor(); }, 1000);
+Cdi.onInfo = l => { if (/^CDI AM6 programmabile/.test(l)) { Cdi.lastCsv = 0; Cdi.lastK = 0; setTimeout(() => Cdi.ensureMonitor(), 600); } };
+
+// ---------- cruscotto
+function arc(cx, cy, r, a0, a1) {
+  const p = a => [cx + r * Math.cos(a * Math.PI / 180), cy - r * Math.sin(a * Math.PI / 180)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+}
+function drawGauge() {
+  const max = 15000, lim = cfgDev ? (cfgDev.test ? Math.min(cfgDev.limit, 4000) : cfgDev.limit) : 12500;
+  const ang = v => 180 - 180 * Math.min(Math.max(v, 0), max) / max;
+  const rpm = tele && now() - teleT < 1500 ? tele.rpm : 0;
+  let s = `<path d="${arc(150, 150, 120, 180, 0)}" stroke="#252c36" stroke-width="20" fill="none"/>`;
+  s += `<path d="${arc(150, 150, 120, ang(lim), 0)}" stroke="#5a1e1e" stroke-width="20" fill="none"/>`;
+  if (rpm > 0) s += `<path d="${arc(150, 150, 120, 180, ang(rpm))}" stroke="${rpm >= lim ? 'var(--bad)' : 'var(--accent)'}" stroke-width="20" fill="none"/>`;
+  for (let k = 0; k <= 15; k++) {
+    const a = ang(k * 1000) * Math.PI / 180, r1 = 132, r2 = k % 5 ? 137 : 142;
+    s += `<line x1="${150 + r1 * Math.cos(a)}" y1="${150 - r1 * Math.sin(a)}" x2="${150 + r2 * Math.cos(a)}" y2="${150 - r2 * Math.sin(a)}" stroke="#555"/>`;
+    if (k % 5 === 0) s += `<text x="${150 + 100 * Math.cos(a)}" y="${154 - 100 * Math.sin(a)}" text-anchor="middle">${k}k</text>`;
+  }
+  $('#gauge').innerHTML = s;
+}
+function drawTrend() {
+  const W = 340, H = 150, L = 30, R = 30, T = 8, B = 18, span = 30000, t1 = now();
+  const x = t => L + (W - L - R) * (1 - (t1 - t) / span);
+  const yR = v => T + (H - T - B) * (1 - v / 15000), yA = v => T + (H - T - B) * (1 - (v + 5) / 45);
+  let s = '';
+  for (const v of [0, 5000, 10000, 15000]) s += `<line x1="${L}" x2="${W - R}" y1="${yR(v)}" y2="${yR(v)}" stroke="#252c36"/><text x="${L - 3}" y="${yR(v) + 3}" text-anchor="end">${v / 1000}k</text>`;
+  for (const v of [0, 20, 40]) s += `<text x="${W - R + 3}" y="${yA(v) + 3}" style="fill:var(--adv)">${v}°</text>`;
+  s += `<text x="${L}" y="${H - 4}">-30 s</text><text x="${W - R}" y="${H - 4}" text-anchor="end">ora</text>`;
+  const pts = hist.filter(h => t1 - h.t <= span);
+  if (pts.length > 1) {
+    s += `<polyline fill="none" stroke="var(--adv)" stroke-width="1.5" points="${pts.map(h => x(h.t).toFixed(1) + ',' + yA(h.adv).toFixed(1)).join(' ')}"/>`;
+    s += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts.map(h => x(h.t).toFixed(1) + ',' + yR(h.rpm).toFixed(1)).join(' ')}"/>`;
+  }
+  $('#trend').innerHTML = s;
+}
+Cdi.onTelemetry = d => {
+  tele = d; teleT = now();
+  sessionMax = Math.max(sessionMax, d.rpm);
+  hist.push({ t: teleT, rpm: d.rpm, adv: d.adv });
+  while (hist.length && teleT - hist[0].t > 31000) hist.shift();
+};
+let lastRunning = null;
+function refreshDash() {
+  const fresh = tele && now() - teleT < 1500;
+  $('#dRpm').textContent = fresh ? tele.rpm : '—';
+  $('#dAdv').textContent = fresh ? tele.adv.toFixed(1) : '—';
+  $('#dMax').textContent = connected ? sessionMax : '—';
+  $('#dLim').textContent = fresh ? tele.lim : '—';
+  $('#dSkip').textContent = fresh ? tele.skips : '—';
+  $('#dSparks').textContent = fresh ? tele.sparks : '—';
+  const cut = $('#dCut');
+  if (!fresh) { cut.className = 'pill warn'; cut.textContent = connected ? 'in attesa di dati…' : 'non collegato'; }
+  else if (tele.cut) { cut.className = 'pill bad'; cut.textContent = 'LIMITATORE: TAGLIO'; }
+  else { cut.className = 'pill ok'; cut.textContent = tele.rpm > 0 ? 'motore acceso' : 'motore fermo'; }
+  $('#dMode').classList.toggle('hidden', !(cfgDev && cfgDev.test));
+  drawGauge(); drawTrend();
+  // banner impostazioni
+  const run = engineRunning();
+  if (run !== lastRunning) {
+    lastRunning = run;
+    const b = $('#runBanner');
+    b.className = 'banner ' + (run ? 'bad' : 'warn');
+    b.innerHTML = run ? '⛔ <b>Motore acceso</b>: la centralina rifiuta le modifiche. Spegni il motore per salvare.'
+                      : '⚠️ Le modifiche si possono salvare <b>solo a motore spento</b>. La centralina rifiuta i comandi se il motore gira.';
+  }
+  if (form) drawMap();
+}
+setInterval(refreshDash, 200);
+
+// ---------- impostazioni
+const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : NaN; };
+const fmt1 = t10 => (t10 / 10).toFixed(1);
+function fillForm() {
+  $('#fP').value = fmt1(form.pickup10).replace('.', ',');
+  $('#fE').value = form.edge; $('#fC').value = form.crank; $('#fL').value = form.limit; $('#fY').value = form.hyst; $('#fT').value = form.test;
+  renderTable(); markChanges();
+}
+function readForm() {
+  form.pickup10 = Math.round(num($('#fP').value) * 10);
+  form.edge = +$('#fE').value; form.crank = Math.round(num($('#fC').value)); form.limit = Math.round(num($('#fL').value));
+  form.hyst = Math.round(num($('#fY').value)); form.test = +$('#fT').value;
+  markChanges();
+}
+['#fP', '#fC', '#fL', '#fY'].forEach(id => $(id).addEventListener('input', readForm));
+['#fE', '#fT'].forEach(id => $(id).addEventListener('change', readForm));
+
+function validate() {
+  const e = [];
+  const chk = (ok, id, msg) => { $(id) && $(id).classList.toggle('err', !ok); if (!ok) e.push(msg); };
+  chk(form.pickup10 >= 0 && form.pickup10 <= 600, '#fP', 'Angolo pick-up: deve essere tra 0 e 60 gradi');
+  chk(form.crank >= 600 && form.crank <= 3000, '#fC', 'Giri avviamento: tra 600 e 3000');
+  chk(form.limit >= 2000 && form.limit <= 18000, '#fL', 'Limitatore: tra 2000 e 18000');
+  chk(form.hyst >= 0 && form.hyst <= 1500, '#fY', 'Isteresi: tra 0 e 1500');
+  const p = form.pts;
+  if (p.length < 1 || p.length > 12) e.push('La mappa deve avere da 1 a 12 punti');
+  p.forEach((pt, i) => {
+    const okR = Number.isInteger(pt.r) && pt.r >= 0 && pt.r <= 20000 && (i === 0 || pt.r > p[i - 1].r);
+    const okA = Number.isInteger(pt.a10) && pt.a10 >= -50 && pt.a10 <= 450;
+    const rr = document.querySelector(`#mapBody tr[data-i="${i}"]`);
+    if (rr) { rr.querySelector('.r').classList.toggle('err', !okR); rr.querySelector('.a').classList.toggle('err', !okA); }
+    if (!okR) e.push(`Punto ${i}: i giri devono essere tra 0 e 20000 e più alti del punto prima`);
+    if (!okA) e.push(`Punto ${i}: i gradi devono essere tra -5 e 45`);
+  });
+  return e;
+}
+function mapWarnings() {
+  const w = [];
+  if (form.pts.some(p => p.a10 > form.pickup10)) w.push('Alcuni punti hanno più anticipo dell\'angolo pick-up: la centralina li limita all\'angolo pick-up.');
+  return w;
+}
+function markChanges() {
+  if (!cfgDev) return;
+  const ch = (id, a, b) => $(id).classList.toggle('changed', a !== b);
+  ch('#fP', form.pickup10, cfgDev.pickup10); ch('#fE', form.edge, cfgDev.edge); ch('#fC', form.crank, cfgDev.crank);
+  ch('#fL', form.limit, cfgDev.limit); ch('#fY', form.hyst, cfgDev.hyst); ch('#fT', form.test, cfgDev.test);
+  form.pts.forEach((p, i) => {
+    const d = cfgDev.pts[i], rr = document.querySelector(`#mapBody tr[data-i="${i}"]`);
+    if (!rr) return;
+    rr.querySelector('.r').classList.toggle('changed', !d || d.r !== p.r);
+    rr.querySelector('.a').classList.toggle('changed', !d || d.a10 !== p.a10);
+  });
+  const errs = validate(), warns = mapWarnings(), box = $('#mapErr');
+  box.classList.toggle('hidden', !errs.length && !warns.length);
+  box.className = 'banner ' + (errs.length ? 'bad' : 'warn') + (errs.length || warns.length ? '' : ' hidden');
+  box.innerHTML = errs.concat(warns).map(x => '• ' + x).join('<br>');
+  drawMap();
+}
+function renderTable() {
+  const tb = $('#mapBody'); tb.innerHTML = '';
+  form.pts.forEach((p, i) => {
+    const tr = document.createElement('tr'); tr.dataset.i = i; if (i === selRow) tr.className = 'selrow';
+    tr.innerHTML = `<td>${i}</td><td><input class="r" inputmode="numeric" value="${p.r}"></td><td><input class="a" inputmode="decimal" value="${fmt1(p.a10).replace('.', ',')}"></td>
+      <td style="white-space:nowrap"><button class="m">−</button> <button class="p">+</button></td><td><button class="x" title="togli">🗑</button></td>`;
+    const rI = tr.querySelector('.r'), aI = tr.querySelector('.a');
+    rI.oninput = () => { p.r = Math.round(num(rI.value)); markChanges(); };
+    aI.oninput = () => { p.a10 = Math.round(num(aI.value) * 10); markChanges(); };
+    const step = d => { p.a10 = (isFinite(p.a10) ? p.a10 : 0) + d; aI.value = fmt1(p.a10).replace('.', ','); markChanges(); };
+    tr.querySelector('.m').onclick = () => step(-5);
+    tr.querySelector('.p').onclick = () => step(5);
+    tr.querySelector('.x').onclick = () => { if (form.pts.length <= 1) return; form.pts.splice(i, 1); selRow = -1; renderTable(); markChanges(); };
+    tr.addEventListener('focusin', () => { selRow = i; document.querySelectorAll('#mapBody tr').forEach(t => t.classList.toggle('selrow', +t.dataset.i === i)); drawMap(); });
+    tb.appendChild(tr);
+  });
+  $('#btnAddPt').disabled = form.pts.length >= 12;
+}
+$('#btnAddPt').onclick = () => {
+  if (!form || form.pts.length >= 12) return;
+  const last = form.pts[form.pts.length - 1];
+  form.pts.push({ r: last ? Math.min(20000, last.r + 1000) : 1000, a10: last ? last.a10 : 150 });
+  selRow = form.pts.length - 1; renderTable(); markChanges();
+};
+$('#btnSortPt').onclick = () => { if (!form) return; form.pts.sort((a, b) => a.r - b.r); selRow = -1; renderTable(); markChanges(); };
+
+function drawMap() {
+  if (!form) return;
+  const W = 340, H = 210, L = 30, R = 10, T = 10, B = 24;
+  const pts = form.pts.filter(p => isFinite(p.r) && isFinite(p.a10));
+  const xmax = Math.max(14000, ...pts.map(p => p.r + 1000), (form.limit || 0) + 1000);
+  const ymax = Math.max(30, Math.ceil(((form.pickup10 || 0) / 10 + 3) / 5) * 5, ...pts.map(p => p.a10 / 10 + 3));
+  const x = r => L + (W - L - R) * r / xmax, y = a => T + (H - T - B) * (1 - (a + 5) / (ymax + 5));
+  let s = '';
+  for (let r = 0; r <= xmax; r += 2000) s += `<line x1="${x(r)}" x2="${x(r)}" y1="${T}" y2="${H - B}" stroke="#222932"/><text x="${x(r)}" y="${H - 8}" text-anchor="middle">${r / 1000}k</text>`;
+  for (let a = 0; a <= ymax; a += 5) s += `<line x1="${L}" x2="${W - R}" y1="${y(a)}" y2="${y(a)}" stroke="#222932"/><text x="${L - 4}" y="${y(a) + 3}" text-anchor="end">${a}°</text>`;
+  if (isFinite(form.crank)) s += `<rect x="${L}" y="${T}" width="${Math.max(0, x(form.crank) - L)}" height="${H - T - B}" fill="#ffffff" opacity=".06"/>`;
+  if (isFinite(form.limit)) { const lim = form.test ? Math.min(form.limit, 4000) : form.limit; s += `<line x1="${x(lim)}" x2="${x(lim)}" y1="${T}" y2="${H - B}" stroke="var(--bad)" stroke-width="1.5"/>`; }
+  if (isFinite(form.pickup10)) s += `<line x1="${L}" x2="${W - R}" y1="${y(form.pickup10 / 10)}" y2="${y(form.pickup10 / 10)}" stroke="var(--adv)" stroke-dasharray="4 3"/>`;
+  if (pts.length) {
+    const line = [[0, pts[0].a10]].concat(pts.map(p => [p.r, p.a10]), [[xmax, pts[pts.length - 1].a10]]);
+    s += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${line.map(([r, a]) => x(r).toFixed(1) + ',' + y(Math.min(a, form.pickup10) / 10).toFixed(1)).join(' ')}"/>`;
+    form.pts.forEach((p, i) => { if (isFinite(p.r) && isFinite(p.a10)) s += `<circle cx="${x(p.r)}" cy="${y(p.a10 / 10)}" r="${i === selRow ? 7 : 4.5}" fill="${i === selRow ? '#fff' : 'var(--accent)'}" data-i="${i}"/>`; });
+  }
+  if (tele && now() - teleT < 1500 && tele.rpm > 0) s += `<circle cx="${x(tele.rpm)}" cy="${y(tele.adv)}" r="6" fill="var(--ok)" stroke="#000"/>`;
+  $('#mapChart').innerHTML = s;
+}
+$('#mapChart').addEventListener('click', e => {
+  const i = e.target.dataset && e.target.dataset.i;
+  if (i === undefined) return;
+  const inp = document.querySelector(`#mapBody tr[data-i="${i}"] .a`); if (inp) inp.focus();
+});
+
+const msgs = $('#saveMsgs');
+function msg(text, cls) { msgs.classList.remove('hidden'); const d = document.createElement('div'); d.className = cls || ''; d.textContent = text; msgs.appendChild(d); }
+async function loadConfig(silent) {
+  try {
+    if (!silent) { msgs.innerHTML = ''; msg('Leggo la configurazione…', 'tx'); }
+    cfgDev = await Cdi.readConfig();
+    form = JSON.parse(JSON.stringify(cfgDev)); selRow = -1; fillForm();
+    if (!silent) msg('Configurazione letta.', 'ok');
+  } catch (e) { if (!silent) msg(e.message, 'err'); else log(e.message, 'err'); }
+}
+$('#btnRead').onclick = () => loadConfig(false);
+
+$('#btnSave').onclick = async () => {
+  if (!form || !cfgDev) return;
+  readForm();
+  msgs.innerHTML = '';
+  const errs = validate();
+  if (errs.length) { msg('Correggi prima questi valori:', 'err'); errs.forEach(x => msg('• ' + x, 'err')); return; }
+  if (engineRunning()) { msg('Il motore è acceso: spegnilo e riprova. (La centralina accetta modifiche solo a motore fermo.)', 'err'); return; }
+  const cmds = [];
+  if (form.pickup10 !== cfgDev.pickup10) cmds.push('P ' + fmt1(form.pickup10));
+  if (form.edge !== cfgDev.edge) cmds.push('E ' + form.edge);
+  if (form.crank !== cfgDev.crank) cmds.push('C ' + form.crank);
+  if (form.limit !== cfgDev.limit) cmds.push('L ' + form.limit);
+  if (form.hyst !== cfgDev.hyst) cmds.push('Y ' + form.hyst);
+  if (form.test !== cfgDev.test) cmds.push('T ' + form.test);
+  const mapChanged = form.pts.length !== cfgDev.pts.length || form.pts.some((p, i) => p.r !== cfgDev.pts[i].r || p.a10 !== cfgDev.pts[i].a10);
+  if (mapChanged) {
+    cmds.push('N ' + form.pts.length);
+    form.pts.forEach((p, i) => cmds.push(`M ${i} ${p.r} ${fmt1(p.a10)}`));
+  }
+  $('#btnSave').disabled = true;
+  try {
+    for (const c of cmds) {
+      msg('→ ' + c, 'tx');
+      const r = await Cdi.ask(c);
+      if (!/^OK/.test(r)) { msg('La centralina ha risposto: “' + r + '”', 'err'); msg('Salvataggio interrotto. Rileggo la configurazione attuale…', 'err'); await loadConfig(true); return; }
+    }
+    msg('→ W (salva in memoria)', 'tx');
+    const r = await Cdi.ask('W');
+    if (r !== 'Salvato.') { msg('La centralina ha risposto: “' + r + '”', 'err'); return; }
+    msg(cmds.length ? `✅ Salvato! (${cmds.length} modifiche)` : '✅ Salvato! (nessuna modifica, configurazione riscritta)', 'ok');
+    await loadConfig(true);
+  } catch (e) { msg(e.message, 'err'); }
+  finally { $('#btnSave').disabled = !connected; }
+};
+$('#btnDefaults').onclick = async () => {
+  if (!confirm('Caricare i valori di fabbrica?\nAngolo pick-up 28°, modalità test ATTIVA, curva prudente.\nVerranno memorizzati solo se poi premi “Salva”.')) return;
+  msgs.innerHTML = '';
+  try {
+    if (engineRunning()) { msg('Il motore è acceso: spegnilo e riprova.', 'err'); return; }
+    msg('→ D', 'tx');
+    const r = await Cdi.ask('D');
+    if (!/^Valori di fabbrica/.test(r)) { msg('La centralina ha risposto: “' + r + '”', 'err'); return; }
+    msg('Valori di fabbrica caricati. Premi “Salva sulla centralina” per memorizzarli.', 'ok');
+    await loadConfig(true);
+  } catch (e) { msg(e.message, 'err'); }
+};
+
+// ---------- statistiche
+function statMsg(text, cls) { const b = $('#statMsg'); b.className = 'banner ' + cls; b.textContent = text; }
+async function loadStats() {
+  try {
+    statMsg('Leggo i dati di marcia…', 'info');
+    const s = await Cdi.readStats();
+    $('#statMsg').className = 'banner hidden';
+    $('#sRun').textContent = s.run; $('#sStarts').textContent = s.starts; $('#sMax').textContent = s.max;
+    $('#sLast').textContent = s.last; $('#sLim').textContent = s.lim;
+    $('#sBands').innerHTML = s.bands.map(b => `<div class="b"><span class="n">${b.from}${b.to ? '–' + b.to : '+'}</span><span class="bar"><i style="width:${Math.min(100, b.pct)}%"></i></span><span class="v">${b.pct.toFixed(1)}% · ${b.time}</span></div>`).join('');
+    $('#statBody').classList.remove('hidden');
+  } catch (e) { statMsg(e.message, 'bad'); }
+}
+$('#btnStats').onclick = loadStats;
+$('#btnZero').onclick = async () => {
+  if (!confirm('Azzerare TUTTI i dati di marcia (ore motore, avviamenti, giri massimi…)?\nNon si può annullare.')) return;
+  try {
+    if (engineRunning()) { statMsg('Il motore è acceso: spegnilo e riprova.', 'bad'); return; }
+    const r = await Cdi.ask('Z 1');
+    if (r !== 'Dati di marcia azzerati.') { statMsg('La centralina ha risposto: “' + r + '”', 'bad'); return; }
+    await loadStats(); statMsg('Dati di marcia azzerati.', 'info');
+  } catch (e) { statMsg(e.message, 'bad'); }
+};
+
+// ---------- console
+async function conSend(c) {
+  c = c.trim(); if (!c || !connected) return;
+  if (/^[kK]\b/.test(c)) Cdi.lastK = now();
+  await Cdi.raw(c);
+}
+$('#conSend').onclick = () => { conSend($('#conIn').value); $('#conIn').value = ''; };
+$('#conIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('#conSend').click(); });
+document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => conSend(b.dataset.q));
+
+// ---------- schede
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x === b));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('sel', t.id === 'tab-' + b.dataset.tab));
+  $('#connectCard').classList.toggle('hidden', connected && b.dataset.tab !== 'dash');
+  if (b.dataset.tab === 'set' && connected && !cfgDev) loadConfig(false);
+  if (b.dataset.tab === 'stat' && connected && $('#statBody').classList.contains('hidden')) loadStats();
+  window.scrollTo(0, 0);
+});
+
+// ---------- avvio
+if (!navigator.bluetooth) { $('#noBt').classList.remove('hidden'); $('#btnConnect').disabled = true; $('#btnConnectAll').disabled = true; }
+updateConnUI();
+if (/[?&]demo/.test(location.search)) connect('demo');
+</script>
+</body>
+</html>
